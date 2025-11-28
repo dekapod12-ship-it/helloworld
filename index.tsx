@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI } from "@google/genai";
-import { Send, Loader2, Bot, AlertTriangle } from "lucide-react";
+import { Send, Loader2, Bot, AlertTriangle, Key, ExternalLink, Settings } from "lucide-react";
 
-// Initialize AI Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Initialize AI Client safely
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
 
 const App = () => {
   const [prompt, setPrompt] = useState('');
@@ -12,15 +13,75 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // -------------------------------------------------------------------------
+  // 1. API KEY CHECK & SETUP GUIDE
+  // If no API Key is detected, we show this guide instead of the main app.
+  // -------------------------------------------------------------------------
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
+        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-amber-200 animate-in fade-in zoom-in duration-300">
+           
+           {/* Setup Header */}
+           <div className="bg-amber-500 p-6 flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                <AlertTriangle className="text-white w-6 h-6" />
+              </div>
+              <h1 className="text-xl font-bold text-white">Kurulum Gerekli</h1>
+           </div>
+           
+           <div className="p-8 space-y-6">
+              <p className="text-gray-600 leading-relaxed">
+                Uygulamanın çalışabilmesi için <strong>API_KEY</strong> environment variable'ının Vercel üzerinde tanımlanması gerekmektedir.
+              </p>
+
+              {/* Step-by-step Guide */}
+              <div className="bg-amber-50 p-5 rounded-xl border border-amber-100 space-y-4">
+                <h3 className="font-semibold text-amber-900 flex items-center gap-2">
+                  <Settings className="w-4 h-4"/> Vercel Kurulum Adımları:
+                </h3>
+                <ol className="list-decimal list-inside text-sm text-amber-800 space-y-3 ml-1">
+                  <li>Vercel Dashboard'una git.</li>
+                  <li>Bu projeyi seç ve <strong>Settings</strong> sekmesine tıkla.</li>
+                  <li>Soldaki menüden <strong>Environment Variables</strong>'ı seç.</li>
+                  <li>
+                    Yeni değişken ekle:
+                    <ul className="list-disc list-inside ml-4 mt-1 text-amber-700/80 font-mono text-xs">
+                        <li>Key: <span className="font-bold text-amber-900">API_KEY</span></li>
+                        <li>Value: <span className="italic">Senin Google Gemini API Anahtarın</span></li>
+                    </ul>
+                  </li>
+                  <li>Değişiklikleri kaydet ve projeyi <strong>Redeploy</strong> et.</li>
+                </ol>
+              </div>
+
+              {/* Action Link */}
+              <a 
+                href="https://aistudio.google.com/app/apikey" 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5"
+              >
+                <Key className="w-4 h-4"/>
+                Google AI Studio'dan Key Al
+                <ExternalLink className="w-4 h-4 opacity-70"/>
+              </a>
+              
+              <p className="text-xs text-center text-gray-400">
+                Ayarlamayı yaptıktan sonra sayfayı yenileyin.
+              </p>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. MAIN APPLICATION
+  // -------------------------------------------------------------------------
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     
-    // Check if API Key is available
-    if (!process.env.API_KEY) {
-      setError("HATA: API Key bulunamadı. Lütfen Vercel Environment Variables kısmına API_KEY ekleyin.");
-      return;
-    }
-
     setLoading(true);
     setError('');
     setResponse('');
@@ -34,7 +95,7 @@ const App = () => {
       setResponse(result.text || "Cevap metni boş döndü.");
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Bir hata oluştu.");
+      setError(err.message || "Bir hata oluştu. API Key'inizin geçerli olduğundan emin olun.");
     } finally {
       setLoading(false);
     }
@@ -44,14 +105,17 @@ const App = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         
-        {/* Header */}
+        {/* App Header */}
         <div className="bg-blue-600 p-6 flex items-center gap-3">
             <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
                 <Bot className="text-white w-6 h-6" />
             </div>
             <div>
                 <h1 className="text-xl font-bold text-white">Gemini API Tester</h1>
-                <p className="text-blue-100 text-xs">Vercel Deployment Check</p>
+                <p className="text-blue-100 text-xs flex items-center gap-1">
+                   <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                   System Online
+                </p>
             </div>
         </div>
 
@@ -81,7 +145,10 @@ const App = () => {
             {error && (
                 <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                     <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                    <p className="text-sm">{error}</p>
+                    <div>
+                        <p className="font-semibold text-sm">İşlem Başarısız</p>
+                        <p className="text-xs mt-1 opacity-90">{error}</p>
+                    </div>
                 </div>
             )}
 
